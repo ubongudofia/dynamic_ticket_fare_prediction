@@ -1,0 +1,63 @@
+<div class="charts">
+
+    <div class="charts-card">
+      <p class="chart-title">Average Predicted Fare by Route</p>
+      <div id="fare-average-route"></div>
+    </div>
+  
+  </div><br><br>
+  <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+  <script>
+    // var data = {{ data | tojson | safe }};
+    // var labels = {{ labels | tojson | safe }};
+    // console.log("Data:", data);
+    // console.log("Labels:", labels);
+  
+    // var options = {
+    //     chart: {
+    //         type: 'bar'
+    //     },
+    //     series: [{
+    //         name: 'Average Fare (₦)',
+    //         data: data
+    //     }],
+    //     xaxis: {
+    //         categories: labels
+    //     },
+    //     dataLabels: {
+    //         enabled: true
+    //     }
+    // };
+  
+    // var chart = new ApexCharts(document.querySelector("#fare-average-route"), options);
+    // chart.render();
+
+
+    const fareAnalyticsUrl = {{ url_for('api_fare_analytics') | tojson }};
+
+
+    fetch(fareAnalyticsUrl)
+    .then(response => response.json())
+    .then(data => {
+        const labels = data.map(item => item.route);
+        const fares = data.map(item => item.average_fare);
+
+        const options = {
+            chart: { type: 'bar' },
+            series: [{
+                name: 'Average Fare (₦)',
+                data: fares
+            }],
+            xaxis: {
+                categories: labels
+            },
+            dataLabels: { enabled: true }
+        };
+
+        const chart = new ApexCharts(document.querySelector("#fare-average-route"), options);
+        chart.render();
+    })
+    .catch(err => console.error("Failed to fetch analytics data:", err));
+
+  </script>
+  

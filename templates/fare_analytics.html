@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Rail e-Ticket Admin Dashboard</title>
+
+  <!-- Montserrat Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@100;200;300;400;500;600;700;800;900&display=swap"
+    rel="stylesheet">
+  <!-- Material Icons -->
+  <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+  <!-- For ApexCharts CSS -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/apexcharts/4.3.0/apexcharts.min.css" rel="stylesheet">
+  <!-- For ApexCharts JS -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/apexcharts/4.3.0/apexcharts.min.js"></script>
+  <!-- Material Icons -->
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
+
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.4/socket.io.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/apexcharts/4.3.0/apexcharts.min.js"></script>
+
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css')}}" />
+</head>
+
+<body>
+  <div class="grid-container">
+    <!-- Header -->
+    <header class="header">
+      <div class="menu-icon" onclick="openSidebar()">
+        <span class="material-icons-outlined">menu</span>
+      </div>
+      <div class="header-left">
+        <span class="material-icons-outlined">search</span>
+      </div>
+      <div class="header-right">
+        <span class="material-icons-outlined">notifications</span>
+        <span class="material-icons-outlined">email</span>
+        <span class="material-icons-outlined">account_circle</span>
+      </div>
+    </header>
+    <!-- End Header -->
+
+    <!-- Main -->
+    <main class="main-container">
+      <div class="main-title">
+        <p class="font-weight-bold">ADMIN DASHBOARD</p><span> Welcome Ubong Udofia</span>
+      </div>
+
+      <!-- Include Sidebar Here -->
+      {% include "sidebar.html" %}
+        <div class="charts">
+
+          <div class="charts-card">
+            <p class="chart-title">Average Predicted Fare by Route</p>
+            <div id="fare-average-route"></div>
+          </div>
+
+          <div class="charts-card">
+            <p class="chart-title">Fare Trend Over Time</p>
+            <div id="fare-trend"></div>
+          </div>
+
+          <div class="charts-card">
+            <p class="chart-title">Average Fare: Peak vs Off-Peak Hours</p>
+            <div id="fare-peak-offpeak"></div>
+          </div>
+
+          <div class="charts-card">
+            <p class="chart-title">Fare vs Seat Availability Ratio</p>
+            <div id="fare-seat_availability_ratio"></div>
+          </div>
+
+          <div class="charts-card">
+            <p class="chart-title">Payment Status Chart</p>
+            <div id="payment_status_chart"></div>
+          </div>
+
+          <div class="charts-card">
+            <p class="chart-title">Tickets Per Day</p>
+            <div id="tickets_per_day"></div>
+          </div>
+
+  </div><br><br>
+  <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+  <script>
+    var data = {{ data | tojson | safe }};
+    var labels = {{ labels | tojson | safe }};
+    console.log("Data:", data);
+    console.log("Labels:", labels);
+  
+    var options = {
+        chart: {
+            type: 'bar'
+        },
+        series: [{
+            name: 'Average Fare (₦)',
+            data: data
+        }],
+        xaxis: {
+            categories: labels
+        },
+        dataLabels: {
+            enabled: true
+        }
+    };
+  
+    var chart = new ApexCharts(document.querySelector("#fare-average-route"), options);
+    chart.render();
+
+
+
+
+
+    fetch("/fare_trend_data")
+      .then(res => res.json())
+      .then(data => {
+        const series = Object.keys(data).map(route => ({
+            name: route,
+            data: data[route]
+        }));
+
+        const options = {
+            chart: { type: 'line', height: 400 },
+            series: series,
+            xaxis: { type: 'category', title: { text: 'Date' } },
+            yaxis: { title: { text: 'Predicted Fare (₦)' } }
+        };
+
+        new ApexCharts(document.querySelector("#fare-trend"), options).render();
+      });
+
+
+
+      fetch("/fare_peak_comparison")
+      .then(res => res.json())
+      .then(data => {
+        const options = {
+          chart: { type: 'bar', height: 100 },
+          title: { text: "Peak vs Off-Peak Fare Comparison" },
+          series: [{ name: "Average Fare (₦)", data: data.data }],
+          xaxis: { categories: data.labels },
+          dataLabels: { enabled: true }
+        };
+        new ApexCharts(document.querySelector("#fare-peak-offpeak"), options).render();
+      });
+
+
+
+      fetch("/fare_vs_demand")
+      .then(res => res.json())
+      .then(data => {
+        const options = {
+            chart: { type: 'scatter', height: 400, zoom: { enabled: true } },
+            series: [{
+                name: "Fares",
+                data: data
+            }],
+            xaxis: {
+                title: { text: 'Seat Availability Ratio (0 = Full, 1 = Empty)' },
+                min: 0,
+                max: 1
+            },
+            yaxis: {
+                title: { text: 'Predicted Fare (₦)' }
+            }
+        };
+        new ApexCharts(document.querySelector("#fare-seat_availability_ratio"), options).render();
+      });
+
+
+      fetch("/payment_status_chart")
+  .then(res => res.json())
+  .then(data => {
+    new ApexCharts(document.querySelector("#payment_status_chart"), {
+      chart: { type: "pie" },
+      series: data.data,
+      labels: data.labels,
+      title: { text: "Payment Status Distribution" }
+    }).render();
+  });
+
+fetch("/tickets_per_day")
+  .then(res => res.json())
+  .then(data => {
+    new ApexCharts(document.querySelector("#tickets_per_day"), {
+      chart: { type: "bar" },
+      series: [{ name: "Tickets", data: data.data }],
+      xaxis: { categories: data.labels },
+      title: { text: "Tickets Booked Per Day" }
+    }).render();
+  });
+
+
+
+  </script>
+</body>
+</html>

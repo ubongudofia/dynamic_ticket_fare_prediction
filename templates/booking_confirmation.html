@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Montserrat Font -->
+    <link
+        href="https://fonts.googleapis.com/css2?family=Montserrat:wght@100;200;300;400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
+    <!-- Material Icons -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
+    <title>e-Ticket Login </title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css')}}" />
+</head>
+
+<body>
+    <div class="main">
+        <div class="blocks regalign">
+            <div class="right">
+                <div class="trip-detail-container">
+                    <div class="one-way-container">
+                        <h3 class="trip-detail-title" style="margin-top: 40px; text-align: center;">Ticket Booking
+                            Information</h3>
+                        <table>
+                            <table>
+                                <tr>
+                                    <td>Passenger Name:</td>
+                                    <td id="passenger-name"></td>
+                                </tr>
+                                <tr>
+                                    <td>Phone Number:</td>
+                                    <td id="phone-number"></td>
+                                </tr>
+                                <tr>
+                                    <td>Route:</td>
+                                    <td id="route-name"></td>
+                                </tr>
+                                <tr>
+                                    <td>Departure:</td>
+                                    <td id="departure-station"></td>
+                                </tr>
+                                <tr>
+                                    <td>Arrival:</td>
+                                    <td id="arrival-station"></td>
+                                </tr>
+                                <tr>
+                                    <td>Departure Date & Time:</td>
+                                    <td id="departure-time"></td>
+                                </tr>
+
+                                <tr>
+                                    <td>Seat Number:</td>
+                                    <td id="seat-number"></td>
+                                </tr>
+
+                            </table>
+                        </table>
+                    </div>
+                    <hr><br>
+                    <div class="price-container">
+                        <h3 class="trip-detail-title">Price</h3>
+                        <table>
+                            <tr>
+                                <td>Total Price:</td>
+                                <td id="fare_display"></td>
+                            </tr>
+                        </table>
+                    </div>
+
+                </div>
+                <div class="buttons">
+                    <button type="button cancel_style"
+                        style="background-color: white; color: red; border: 2px solid red;"
+                        id="cancelBtn">Cancel</button>
+                    <button type="button" id="bookTicketBtn">Book Ticket</button>
+                </div>
+            </div>
+
+
+        </div>
+
+    </div>
+
+</body>
+
+</html>
+
+<script>
+
+    // Load booking data
+    document.addEventListener("DOMContentLoaded", function () {
+
+        const bookingData = JSON.parse(sessionStorage.getItem("bookingData"));
+
+        if (!bookingData) {
+            console.error("No booking data found in sessionStorage");
+            document.body.innerHTML = '<div class="error">No booking data found. Please start over.</div>';
+            return;
+        }
+
+        console.log("Loaded booking data:", bookingData); // Debug log
+
+        // Verify datetime format before display
+        const formattedDeparture = bookingData.departure_time || 
+                                 `${bookingData.departure_date || ''} 00:00:00`.trim();
+        
+        console.log("Departure time verification:", {
+            stored: bookingData.departure_time,
+            formatted: formattedDeparture
+        });
+
+
+        // Display all data
+        document.getElementById("passenger-name").textContent = bookingData.passenger_name || "N/A";
+        document.getElementById("phone-number").textContent = bookingData.phone_number || "N/A";
+        document.getElementById("route-name").textContent = bookingData.route_name || "N/A";
+        document.getElementById("departure-station").textContent = bookingData.departure || "N/A";
+        document.getElementById("departure-time").textContent = bookingData.departure_time || "N/A";
+        document.getElementById("arrival-station").textContent = bookingData.arrival || "N/A";
+        document.getElementById("seat-number").textContent = bookingData.seat_number || "N/A";
+        document.getElementById("fare_display").textContent = `₦${(bookingData.fare || 0).toLocaleString()}`;
+
+    });
+
+    // Handle final booking
+    document.getElementById("bookTicketBtn").addEventListener("click", function () {
+        const bookingData = JSON.parse(sessionStorage.getItem("bookingData"));
+
+        fetch("http://127.0.0.1:5009/book_ticket", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(bookingData)
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.message === "Booking successful!") {
+                    alert("✅ Booking Confirmed!");
+
+                    // Store booking details in sessionStorage for the success page
+                    sessionStorage.setItem("bookingDetails", JSON.stringify({
+                        booking_id: data.booking_id,
+                        ...data.booking_data  // Include all booking details
+                    }));
+
+                    // Redirect to success page
+                    window.location.href = "/success";
+                } else {
+                    alert("🚨 Error: " + data.error);
+                }
+            })
+            .catch(error => console.error("Error:", error));
+    });
+
+    // Handle cancellation
+    document.getElementById("cancelBtn").addEventListener("click", function () {
+        sessionStorage.removeItem("bookingData");
+        window.location.href = "/destination";
+    });
+
+
+    // ₦2,469
+    // ₦2,625
+
+
+</script>

@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.4/socket.io.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+
+<body>
+
+    <div class="table-container">
+        <main class="table" id="customers_table">
+            <section class="table__header">
+                <h1>Available Trains</h1>
+                <div class="input-group">
+                    <input type="text" id="search-box" placeholder="Search by route or station..."
+                        onkeyup="filterRoutes()">
+                    <img src="{{ url_for('static', filename='images/search.png') }}" alt="">
+                </div>
+                <div class="export__file">
+                    <label for="export-file" class="export__file-btn" title="Export File"></label>
+                    <input type="checkbox" id="export-file">
+                    <div class="export__file-options">
+                        <label>Export As &nbsp; &#10140;</label>
+                        <label for="export-file" id="toPDF">PDF <img
+                                src="{{ url_for('static', filename='images/pdf.png') }}" alt=""></label>
+                        <label for="export-file" id="toJSON">JSON <img
+                                src="{{ url_for('static', filename='images/json.png') }}" alt=""></label>
+                        <label for="export-file" id="toCSV">CSV <img
+                                src="{{ url_for('static', filename='images/csv.png') }}" alt=""></label>
+                        <label for="export-file" id="toEXCEL">EXCEL <img
+                                src="{{ url_for('static', filename='images/excel.png') }}" alt=""></label>
+                    </div>
+                </div>
+            </section>
+            <section class="table__body">
+
+
+                <!-- <div class="filter">
+                    <label for="filter">Filter By Status:</label>
+                    <select id="filter">
+                        <option value="All">All</option>
+                        <option value="active">Active</option>
+                        <option value="maintenance">Maintenance</option>
+                        <option value="out-of-service">Out of Service</option>
+                    </select>
+                </div> -->
+
+                <!-- <div class="add__new">
+                <a href="/add_train" class="add__new-btn">Add New Train</a>
+            </div> -->
+
+
+                <table id="trainTable">
+                    <thead>
+                        <tr>
+                            <th> Route ID <span class="icon-arrow">&UpArrow;</span></th>
+                            <th> Route Name <span class="icon-arrow">&UpArrow;</span></th>
+                            <th> Departure <span class="icon-arrow">&UpArrow;</span></th>
+                            <th> Arrival <span class="icon-arrow">&UpArrow;</span></th>
+                            <th> base_rate<span class="icon-arrow">&UpArrow;</span></th>
+                            <th> Distance_km <span class="icon-arrow">&UpArrow;</span></th>
+
+                    </thead>
+                    <tbody id="routes-table">
+                        <!-- Data will be inserted here by JavaScript -->
+                    </tbody>
+                </table>
+            </section>
+        </main>
+
+    </div>
+</body>
+
+</html>
+
+<script>
+    // Fetch routes from Flask API
+    fetch("/get_routes")
+        .then(response => response.json())
+        .then(routes => {
+            const tableBody = document.getElementById("routes-table");
+            tableBody.innerHTML = "";
+
+            routes.forEach(route => {
+                const row = document.createElement("tr");
+
+                row.innerHTML = `
+                        <td>${route._id}</td>
+                        <td>${route.route_name} km</td>
+                        <td>${route.departure}</td>
+                        <td>${route.arrival}</td>
+                        <td>${route.base_rate}</td>
+                        <td>${route.distance_km}</td>
+                    `;
+
+                tableBody.appendChild(row);
+            });
+        })
+        .catch(error => console.error("Error fetching routes:", error));
+
+
+
+</script>

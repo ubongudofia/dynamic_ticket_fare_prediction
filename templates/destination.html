@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Montserrat Font -->
+    <link
+        href="https://fonts.googleapis.com/css2?family=Montserrat:wght@100;200;300;400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
+    <!-- Material Icons -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
+    <title>e-Ticket Login </title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css')}}" />
+</head>
+
+<body>
+    <div class="main">
+        <div class="regalign">
+            <div class="login-card">
+                <div class="brand">
+                    <div class="brand-logo">
+                        <p>SELECT DEPARTURE AND ARRIVAL</p>
+                    </div>
+                </div>
+                <form id="bookingForm" method="POST">
+                    <div class="form-group">
+                        <label for="route">Names</label>
+                        <input type="text" name="names" id="names" placeholder="Enter your names">
+                        <div class="error" id="nameError"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="route">Phone Number</label>
+                        <input type="text" name="phone" id="phone" placeholder="Enter your Ohone Number">
+                        <div class="error" id="phoneError"></div>
+                    </div>
+                    <div class="form-group">
+                        <label for="route">Route</label>
+                        <select name="route_name" id="route_name">
+                            <option value="">Select Route</option>
+                        </select>
+                        <div class="error" id="routeError"></div>
+
+                        <div class="form-group">
+                            <label for="departure">Departure</label>
+                            <input type="text" name="departure" id="departure" readonly>
+                            <div class="error" id="departureError"></div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="arrival">Arrival</label>
+                            <input type="text" name="arrival" id="arrival" readonly>
+                            <div class="error" id="arrivalError"></div>
+                        </div>
+
+                        <!-- Hidden input field for distance_km -->
+                        <input type="hidden" id="distance_km" name="distance_km">
+
+                        <div class="form-group">
+                            <label for="date">Departure Date</label>
+                            <input type="date" id="departure_date" name="departure_date" placeholder="yyyy-MM-dd">
+                            <div class="error" id="departure_dateError"></div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="seats">Available Seats</label>
+                            <select name="seats" id="seats">
+                                <option value="">Select Seat</option>
+                            </select>
+                            <div class="error" id="seatsError"></div>
+                        </div>
+
+                        <input type="hidden" id="route_id" name="route_id">
+
+
+                        <button type="button" class="login-btn" id="continueBtn">
+                            Click to Continue
+                        </button>
+                </form>
+
+            </div>
+
+
+        </div>
+
+    </div>
+
+</body>
+
+</html>
+
+<script>
+
+    // =======================GET ROUTE =   =================================
+
+    document.addEventListener("DOMContentLoaded", function () {
+        const routeSelect = document.getElementById("route_name");
+        const departureInput = document.getElementById("departure");
+        const arrivalInput = document.getElementById("arrival");
+        const routeIdInput = document.getElementById("route_id");
+        const distanceKmInput = document.getElementById("distance_km");
+
+        // Fetch routes from Flask backend
+        fetch("/get_routes_detail")
+            .then(response => response.json())
+            .then(routes => {
+                routes.forEach(route => {
+                    let option = document.createElement("option");
+                    option.value = route._id;
+                    option.textContent = route.route_name;
+                    option.setAttribute("data-departure", route.departure);
+                    option.setAttribute("data-arrival", route.arrival);
+                    option.setAttribute("data-route-id", route._id);
+                    option.setAttribute("data-distance", route.distance_km); // Assuming distance_km is part of the route object
+                    routeSelect.appendChild(option);
+                });
+            })
+            .catch(error => console.error("Error fetching routes:", error));
+
+        // Event Listener to update departure & arrival when a route is selected
+        routeSelect.addEventListener("change", function () {
+            let selectedOption = routeSelect.options[routeSelect.selectedIndex];
+
+            if (selectedOption.value !== "") {
+                if (departureInput && arrivalInput && routeIdInput) {  // Ensure elements exist
+                    departureInput.value = selectedOption.getAttribute("data-departure") || "";
+                    arrivalInput.value = selectedOption.getAttribute("data-arrival") || "";
+                    routeIdInput.value = selectedOption.getAttribute("data-route-id") || "";
+                    distanceKmInput.value = selectedOption.getAttribute("data-distance") || "";
+                } else {
+                    console.error("One or more input fields (departure, arrival, route_id) are missing.");
+                }
+            }
+        });
+    });
+
+
+    // =============================================================
+
+    // FORMAT DATE TO CURRENT DATE:
+    document.addEventListener("DOMContentLoaded", function () {
+        // Get today's date in YYYY-MM-DD format
+        let today = new Date().toISOString().split("T")[0];
+
+        // Set the min attribute of the date input
+        document.getElementById("departure_date").setAttribute("min", today);
+    });
+
+    // ==============================================================================
+
+
+    document.getElementById("route_name").addEventListener("change", function () {
+        let selectedOption = this.options[this.selectedIndex];
+        let routeId = selectedOption.getAttribute("data-route-id");
+
+        document.getElementById("route_id").value = routeId;
+
+        console.log("Route ID set:", routeId);
+    });
+
+
+    // ==============================================================================
+    // FETCH SEATS AVAILABILITY
+
+    document.getElementById("route_name").addEventListener("change", loadSeats);
+    document.getElementById("departure_date").addEventListener("change", loadSeats);
+
+    function loadSeats() {
+        let routeId = document.getElementById("route_id").value;  // Now stores ObjectId
+        let departureDate = document.getElementById("departure_date").value;
+
+        if (!routeId || !departureDate) {
+            return;
+        }
+
+        fetch(`/get_available_seats?route_id=${routeId}&departure_date=${departureDate}`)
+            .then(response => response.json())
+            .then(data => {
+                let seatsDropdown = document.getElementById("seats");
+                seatsDropdown.innerHTML = '<option value="">Select Seat</option>';
+
+                if (!data.available_seats || data.available_seats.length === 0) {
+                    let option = document.createElement("option");
+                    option.textContent = "No seats available";
+                    seatsDropdown.appendChild(option);
+                } else {
+                    data.available_seats.forEach(seat => {
+                        let option = document.createElement("option");
+                        option.value = seat.seat_number;
+                        option.textContent = `Seat ${seat.seat_number}`;
+                        seatsDropdown.appendChild(option);
+                    });
+                }
+            })
+            .catch(error => console.error("Error fetching seats:", error));
+    }
+
+    // ==============================================================================
+
+    document.getElementById("continueBtn").addEventListener("click", async function () {
+        const button = this;
+        button.disabled = true;
+
+        try {
+            // 1. Validate form first
+            if (!validateForm()) {
+                throw new Error("Please fill all required fields correctly");
+            }
+
+            // 2. Prepare form data
+            const formData = {
+                passenger_name: document.getElementById("names").value.trim(),
+                phone_number: document.getElementById("phone").value.trim(),
+                route_name: document.getElementById("route_name").value.trim(),
+                departure: document.getElementById("departure").value.trim(),
+                departure_date: document.getElementById("departure_date").value.trim(),
+                arrival: document.getElementById("arrival").value.trim(),
+                distance_km: document.getElementById("distance_km").value.trim(),
+                seat_number: document.getElementById("seats").value.trim(),
+                route_id: document.getElementById("route_id").value.trim(),
+            };
+
+            // 3. Get schedule data
+            const scheduleResponse = await fetch("/get_departure_time", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    departure_date: formData.departure_date,
+                    route_id: formData.route_id,
+                    route_name: formData.route_name
+                })
+            });
+
+            if (!scheduleResponse.ok) {
+                const error = await scheduleResponse.json();
+                throw new Error(error.error || "Failed to get train schedule");
+            }
+
+            const scheduleData = await scheduleResponse.json();
+
+            // Debug log after we have the data
+            console.log("Schedule data:", {
+                availableSeats: scheduleData.available_seats,
+                totalSeats: scheduleData.total_seats, // Note: Fix typo if your backend uses "total_seats"
+                distance_km: formData.distance_km,
+                departure_hour: scheduleData.departure_hour,
+                is_peak_hour: scheduleData.is_peak_hour,
+                seat_availability_ratio: scheduleData.available_count / scheduleData.total_seats
+            });
+
+
+            // Validate required fields
+            if (!scheduleData.train_id || scheduleData.available_count === undefined || !scheduleData.total_seats) {
+                throw new Error("Invalid schedule data received from server");
+            }
+
+            // Calculate seat availability ratio
+            const seatAvailabilityRatio = scheduleData.available_count / scheduleData.total_seats;
+
+
+            // Prepare fare prediction payload
+            const farePayload = {
+                distance_km: parseInt(formData.distance_km),
+                departure_hour: scheduleData.departure_hour,
+                is_peak_hour: scheduleData.is_peak_hour,
+                seat_availability_ratio: seatAvailabilityRatio
+            };
+
+            // 4. Calculate fare
+            const fareResponse = await fetch("/predict_fare", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(farePayload)
+
+            });
+
+            if (!fareResponse.ok) {
+                const error = await fareResponse.json();
+                throw new Error(error.error || "Failed to calculate fare");
+            }
+
+            const fareData = await fareResponse.json();
+
+            // 5. Store complete booking data
+            const bookingData = {
+                ...formData,
+                ...scheduleData,
+                fare: fareData.fare,
+                fare_details: fareData.metadata || {},  // Store additional fare details if available
+                departure_time: formatDepartureTime(scheduleData.departure_time, formData.departure_date)
+            };
+
+            // Debug log to verify format
+            // console.log("Departure time being sent:", bookingData.departure_time);
+            console.log("Stored booking data:", bookingData);
+            sessionStorage.setItem("bookingData", JSON.stringify(bookingData));
+
+            // 6. Redirect to confirmation
+            window.location.href = "/booking_confirmation";
+
+        } catch (error) {
+            console.error("Booking error:", error);
+            showError(error.message);
+        } finally {
+            button.disabled = false;
+        }
+    });
+
+
+    // Helper function to display errors
+    function showError(message) {
+        // Remove any existing error messages
+        const existingError = document.getElementById("error-message");
+        if (existingError) existingError.remove();
+
+        // Create and style new error element
+        const errorElement = document.createElement("div");
+        errorElement.id = "error-message";
+        errorElement.textContent = message;
+        errorElement.style.color = "#d32f2f";  // Material red
+        errorElement.style.marginTop = "12px";
+        errorElement.style.padding = "8px 12px";
+        errorElement.style.backgroundColor = "#ffebee";
+        errorElement.style.borderRadius = "4px";
+        errorElement.style.border = "1px solid #ef9a9a";
+
+        // Insert after the button
+        const button = document.getElementById("continueBtn");
+        button.parentNode.insertBefore(errorElement, button.nextSibling);
+
+        // Auto-remove after 5 seconds
+        setTimeout(() => {
+            errorElement.remove();
+        }, 5000);
+    }
+
+
+    function validateForm() {
+        let hasError = false;
+
+        // Reset error messages
+        let errorFields = [
+            "nameError", "phoneError", "routeError", "departureError",
+            "arrivalError", "seatsError", "departure_dateError"
+        ];
+
+        errorFields.forEach(id => document.getElementById(id).textContent = "");
+
+        // Validation logic
+        if (document.getElementById("names").value.trim() === "") {
+            document.getElementById("nameError").textContent = "Please enter your name";
+            hasError = true;
+        }
+        if (document.getElementById("phone").value.trim() === "") {
+            document.getElementById("phoneError").textContent = "Please enter your phone number";
+            hasError = true;
+        }
+        if (document.getElementById("route_name").value === "") {
+            document.getElementById("routeError").textContent = "Please select a route";
+            hasError = true;
+        }
+        if (document.getElementById("departure").value === "") {
+            document.getElementById("departureError").textContent = "Please select a departure station";
+            hasError = true;
+        }
+        if (document.getElementById("arrival").value === "") {
+            document.getElementById("arrivalError").textContent = "Please select an arrival station";
+            hasError = true;
+        }
+        if (document.getElementById("departure").value === document.getElementById("arrival").value) {
+            document.getElementById("arrivalError").textContent = "Departure and arrival stations cannot be the same";
+            hasError = true;
+        }
+        if (document.getElementById("departure_date").value === "") {
+            document.getElementById("departure_dateError").textContent = "Please select a date";
+            hasError = true;
+        }
+        if (document.getElementById("seats").value === "") {
+            document.getElementById("seatsError").textContent = "Please select a seat";
+            hasError = true;
+        }
+
+        return !hasError; // Return true if no errors, otherwise return false
+    }
+
+
+    // New helper function to ensure proper datetime format
+    function formatDepartureTime(departureTime, fallbackDate) {
+        // If already in correct format, return as-is
+        if (departureTime && /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(departureTime)) {
+            return departureTime;
+        }
+
+        // If we have a fallback date but no time, combine them
+        if (fallbackDate && /^\d{4}-\d{2}-\d{2}$/.test(fallbackDate)) {
+            // Use default time if none provided
+            const defaultTime = departureTime ? departureTime.split(' ')[1] || '00:00:00' : '00:00:00';
+            return `${fallbackDate} ${defaultTime.includes(':') ? defaultTime : '00:00:00'}`;
+        }
+
+        // Fallback to current datetime
+        console.warn("Using current datetime as fallback");
+        return new Date().toISOString().replace('T', ' ').substring(0, 19);
+    }
+
+    // ==============================================================================
+
+</script>
