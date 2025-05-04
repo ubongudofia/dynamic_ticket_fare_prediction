@@ -17,12 +17,12 @@ from flask_socketio import SocketIO, emit
 from collections import defaultdict
 from datetime import datetime, time, timezone, timedelta
 from flask_cors import CORS
-import certifi
 import pytz
 import csv
-import os
 from collections import defaultdict
-
+import os
+import certifi
+from pymongo import MongoClient
 
 # Flask App Configuration
 app = Flask(__name__)
@@ -30,12 +30,22 @@ socketio = SocketIO(app)
 app.secret_key = 'thiskeyissupposedtobeprivateandonlyknowbytheadmin'
 CORS(app)
 
-MONGO_URI = "mongodb://localhost:27017/e_ticketing"
-mongo_client = MongoClient(MONGO_URI)
 
+
+client = MongoClient(
+    os.environ["MONGO_URI"],
+    tlsCAFile=certifi.where()
+)
+db = client["e_ticketing"]  # Use your actual DB name here
+
+
+# mongodb+srv://udofiaubong10:<db_password>@dsamessenger.tqp9u.mongodb.net/
+# client = MongoClient("mongodb+srv://udofiaubong10:qAWzNlJT6x2vSCdb@dsamessenger.tqp9u.mongodb.net", tlsCAFile=certifi.where())
+# client = MongoClient("mongodb+srv://udofiaubong10:qAWzNlJT6x2vSCdb@dsamessenger.tqp9u.mongodb.net", tlsCAFile=certifi.where())
+# chat_db = client.get_database("dsachatDB")
 
 # Set up database and GridFS
-db = mongo_client["e_ticketing"]
+db = client["e_ticketing"]
 
 users_collection = db["users"]
 admin_collection = db["admin"]
@@ -46,9 +56,16 @@ bookings_collection = db["bookings"]
 fare_predictions_collection = db["fare_predictions"]
 fs = gridfs.GridFS(db)  # GridFS instance
 
+# ==============================================================================================================================
+# migrate db
+# mongodump --db e_ticketing --out dump/
+# mongorestore --uri "mongodb+srv://udofiaubong10:qAWzNlJT6x2vSCdb@dsamessenger.tqp9u.mongodb.net/e_ticketing" dump/e_ticketing
+# 
+# Database connection string
+# database = "e_ticketing"   
+# mongodb+srv://udofiaubong10:qAWzNlJT6x2vSCdb@dsamessenger.tqp9u.mongodb.net/e_ticketing?retryWrites=true&w=majority
 
-
-
+# ==============================================================================================================================
 
 # Allowed file extensions
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
